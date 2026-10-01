@@ -9,7 +9,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
 body { font-family: 'Vazirmatn', sans-serif; background: radial-gradient(circle at top left, #0f172a, #020617); }
-.card { background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.08); }
+.card { background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.08); }
 .stat-glow { box-shadow: 0 0 30px rgba(14, 165, 233, 0.15); }
 </style>
 </head>
@@ -25,7 +25,7 @@ body { font-family: 'Vazirmatn', sans-serif; background: radial-gradient(circle 
         <h1 class="text-2xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-blue-500">
           Pablo Rail
         </h1>
-        <p class="text-xs text-slate-400">پنل مدیریت هوشمند کاربران</p>
+        <p class="text-xs text-slate-400">پنل مدیریت هوشمند و ضد فیلتر</p>
       </div>
     </div>
     <a href="/logout" class="px-5 py-2 bg-red-500/20 hover:bg-red-500/40 text-red-300 rounded-xl text-sm transition">
@@ -40,11 +40,11 @@ body { font-family: 'Vazirmatn', sans-serif; background: radial-gradient(circle 
       <div class="text-3xl font-bold text-cyan-400">{{ total_users }}</div>
     </div>
     <div class="card rounded-2xl p-5 stat-glow">
-      <div class="text-slate-400 text-xs mb-1">📦 مجموع حجم اختصاصی</div>
+      <div class="text-slate-400 text-xs mb-1">📦 حجم اختصاصی</div>
       <div class="text-3xl font-bold text-blue-400">{{ total_gb }} GB</div>
     </div>
     <div class="card rounded-2xl p-5 stat-glow">
-      <div class="text-slate-400 text-xs mb-1">📊 مجموع مصرف شده</div>
+      <div class="text-slate-400 text-xs mb-1">📊 مجموع مصرف</div>
       <div class="text-3xl font-bold text-purple-400">{{ total_used }} GB</div>
     </div>
   </div>
@@ -53,9 +53,9 @@ body { font-family: 'Vazirmatn', sans-serif; background: radial-gradient(circle 
   <div class="card rounded-3xl p-6">
     <h3 class="text-md font-bold text-cyan-400 mb-4">➕ افزودن کاربر جدید</h3>
     <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
-      <input id="newName" type="text" placeholder="نام کاربر" class="px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-sm focus:outline-none focus:border-cyan-400">
+      <input id="newName" type="text" placeholder="نام کاربر (انگلیسی)" class="px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-sm focus:outline-none focus:border-cyan-400">
       <input id="newQuota" type="number" placeholder="حجم (GB)" value="30" class="px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-sm focus:outline-none focus:border-cyan-400">
-      <input id="newDays" type="number" placeholder="روز اعتبار" value="30" class="px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-sm focus:outline-none focus:border-cyan-400">
+      <input id="newDays" type="number" placeholder="اعتبار (روز)" value="30" class="px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-sm focus:outline-none focus:border-cyan-400">
       <button onclick="addUser()" class="px-4 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 hover:opacity-90 rounded-xl text-sm font-bold">
         ✨ ساخت کاربر
       </button>
@@ -85,7 +85,7 @@ body { font-family: 'Vazirmatn', sans-serif; background: radial-gradient(circle 
             </div>
 
             <div class="flex gap-2 flex-wrap">
-              <button onclick="showConfig({{ user.id }})" class="px-3 py-1.5 bg-cyan-600/30 text-cyan-300 text-xs rounded-lg hover:bg-cyan-600/50">کانفیگ</button>
+              <button onclick="showConfigs({{ user.id }})" class="px-4 py-1.5 bg-cyan-600/30 text-cyan-300 font-bold text-xs rounded-lg hover:bg-cyan-600/50">⚡ دریافت ۵ کانفیگ</button>
               <button onclick="toggleUser({{ user.id }})" class="px-3 py-1.5 bg-yellow-600/30 text-yellow-300 text-xs rounded-lg hover:bg-yellow-600/50">فعال/غیرفعال</button>
               <button onclick="deleteUser({{ user.id }})" class="px-3 py-1.5 bg-red-600/30 text-red-300 text-xs rounded-lg hover:bg-red-600/50">حذف</button>
             </div>
@@ -106,7 +106,7 @@ body { font-family: 'Vazirmatn', sans-serif; background: radial-gradient(circle 
         {% endfor %}
       </div>
     {% else %}
-      <div class="text-center py-10 text-slate-500 text-sm">هنوز کاربری ساخته نشده!</div>
+      <div class="text-center py-10 text-slate-500 text-sm">هنوز کاربری اضافه نشده است!</div>
     {% endif %}
   </div>
 
@@ -116,26 +116,33 @@ body { font-family: 'Vazirmatn', sans-serif; background: radial-gradient(circle 
   </div>
 </div>
 
-<!-- مودال کانفیگ -->
-<div id="configModal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-  <div class="bg-slate-900 border border-slate-700 rounded-3xl p-6 max-w-md w-full space-y-4">
-    <h3 class="text-md font-bold text-cyan-400">🔗 کانفیگ و لینک اشتراک</h3>
-
-    <div>
-      <label class="block text-xs text-slate-400 mb-1">کانفیگ VLESS:</label>
-      <textarea id="cfgText" readonly rows="3" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-[10px] font-mono text-slate-300 select-all"></textarea>
-      <button onclick="copyCfg()" class="w-full mt-2 py-2 bg-cyan-600/40 hover:bg-cyan-600/60 rounded-xl text-xs">📋 کپی کانفیگ</button>
+<!-- مودال کانفیگ‌های ۵ گانه -->
+<div id="configModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 overflow-y-auto">
+  <div class="bg-slate-900 border border-slate-700 rounded-3xl p-6 max-w-xl w-full space-y-4 my-8">
+    <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+      <h3 class="text-md font-bold text-cyan-400">⚡ ۵ متد اتصال اختصاصی Pablo Rail</h3>
+      <button onclick="closeModal()" class="text-slate-400 hover:text-white text-sm">✕</button>
     </div>
 
-    <div>
-      <label class="block text-xs text-slate-400 mb-1">لینک ساب (Subscription):</label>
-      <input id="subText" readonly class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-[10px] font-mono text-slate-300">
-      <button onclick="copySub()" class="w-full mt-2 py-2 bg-blue-600/40 hover:bg-blue-600/60 rounded-xl text-xs">📋 کپی ساب</button>
+    <!-- ساب لینک -->
+    <div class="bg-slate-800/80 p-3 rounded-2xl border border-slate-700">
+      <label class="block text-xs font-bold text-cyan-300 mb-1">🔗 لینک ساب (یکجا اضافه کردن هر ۵ کانفیگ):</label>
+      <div class="flex gap-2">
+        <input id="subText" readonly class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-slate-300">
+        <button onclick="copySub()" class="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-xs">کپی ساب</button>
+      </div>
     </div>
 
-    <div id="qrBox" class="flex justify-center p-3 bg-white rounded-xl"></div>
+    <!-- لیست ۵ کانفیگ -->
+    <div id="configsContainer" class="space-y-2.5 max-h-80 overflow-y-auto pr-1"></div>
 
-    <button onclick="closeModal()" class="w-full py-2 bg-slate-700 hover:bg-slate-600 rounded-xl text-xs">بستن</button>
+    <!-- کیوآرکد -->
+    <div id="qrSection" class="hidden flex flex-col items-center p-3 bg-slate-800 rounded-2xl">
+      <div id="qrBox" class="p-2 bg-white rounded-xl"></div>
+      <span id="qrTitle" class="text-xs text-slate-300 mt-2"></span>
+    </div>
+
+    <button onclick="closeModal()" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl text-xs">بستن پنجره</button>
   </div>
 </div>
 
@@ -166,25 +173,47 @@ async function toggleUser(id) {
   location.reload();
 }
 
-async function showConfig(id) {
+async function showConfigs(id) {
   const res = await fetch(`/api/user_config/${id}`);
   const data = await res.json();
-  document.getElementById('cfgText').value = data.config;
+  
   document.getElementById('subText').value = data.sub;
-  const qrBox = document.getElementById('qrBox');
-  qrBox.innerHTML = '';
-  new QRCode(qrBox, { text: data.config, width: 160, height: 160 });
+  const container = document.getElementById('configsContainer');
+  container.innerHTML = '';
+
+  data.configs.forEach((item, idx) => {
+    container.innerHTML += `
+      <div class="bg-slate-800/60 border border-slate-700/80 p-3 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
+        <div>
+          <div class="text-xs font-bold text-slate-200">${item.title}</div>
+          <div class="text-[10px] text-cyan-400/80 mt-0.5">${item.tag}</div>
+        </div>
+        <div class="flex gap-1.5 w-full md:w-auto justify-end">
+          <button onclick="navigator.clipboard.writeText('${item.config}'); alert('کانفیگ کپی شد!');" class="px-3 py-1 bg-cyan-600/30 text-cyan-300 hover:bg-cyan-600 hover:text-white text-xs rounded-lg transition">کپی</button>
+          <button onclick="renderQR('${item.config}', '${item.title}')" class="px-3 py-1 bg-blue-600/30 text-blue-300 hover:bg-blue-600 hover:text-white text-xs rounded-lg transition">QR</button>
+        </div>
+      </div>
+    `;
+  });
+
+  document.getElementById('qrSection').classList.add('hidden');
   document.getElementById('configModal').classList.remove('hidden');
 }
 
-function copyCfg() {
-  navigator.clipboard.writeText(document.getElementById('cfgText').value);
-  alert('کانفیگ کپی شد!');
+function renderQR(cfg, title) {
+  const sec = document.getElementById('qrSection');
+  const box = document.getElementById('qrBox');
+  box.innerHTML = '';
+  new QRCode(box, { text: cfg, width: 140, height: 140 });
+  document.getElementById('qrTitle').innerText = title;
+  sec.classList.remove('hidden');
 }
+
 function copySub() {
   navigator.clipboard.writeText(document.getElementById('subText').value);
-  alert('لینک ساب کپی شد!');
+  alert('لینک ساب کپی شد! 📋');
 }
+
 function closeModal() {
   document.getElementById('configModal').classList.add('hidden');
 }
