@@ -130,7 +130,6 @@ def start_caddy():
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
     )
 
-# ترد مانیتورینگ مصرف حجم کاربران از هسته Xray
 def update_stats_loop():
     while True:
         time.sleep(20)
@@ -161,7 +160,49 @@ def update_stats_loop():
         except Exception:
             pass
 
-# ============ روت‌های وب پنل ============
+def make_all_vless_configs(user, host):
+    created_dt = datetime.fromisoformat(user['created_at'])
+    elapsed_days = (datetime.now() - created_dt).days
+    days_left = max(0, user['expire_days'] - elapsed_days)
+    
+    used_gb = round(user['used_bytes'] / (1024**3), 2)
+    quota_gb = user['quota_gb']
+    remaining_gb = max(0.0, round(quota_gb - used_gb, 2))
+    u_uuid = user['uuid']
+    name = user['name']
+
+    status_tag = f"{used_gb}G/{quota_gb}G ({remaining_gb}G) | {days_left}d"
+
+    configs = []
+
+    # 1. کانفیگ مستقیم و پایدار (Chrome)
+    r1 = urllib.parse.quote(f"pablo-{name} [Direct] | {status_tag}")
+    c1 = f"vless://{u_uuid}@{host}:443?path=%2Fws%2F{u_uuid}&security=tls&alpn=http%2F1.1&encryption=none&insecure=0&host={host}&fp=chrome&type=ws&allowInsecure=0&sni={host}#{r1}"
+    configs.append({"title": "🚀 کانفیگ اصلی (Chrome TLS)", "tag": "پیشنهادی برای همه اپراتورها", "config": c1})
+
+    # 2. کانفیگ EarlyData ضد فیلتر (مخصوص همراه اول)
+    r2 = urllib.parse.quote(f"pablo-{name} [EarlyData] | {status_tag}")
+    c2 = f"vless://{u_uuid}@{host}:443?path=%2Fws%2F{u_uuid}%3Fed%3D2560&security=tls&alpn=http%2F1.1&encryption=none&insecure=0&host={host}&fp=chrome&type=ws&allowInsecure=0&sni={host}#{r2}"
+    configs.append({"title": "⚡ کانفیگ EarlyData (ضد فیلتر)", "tag": "عالی برای همراه اول و پکت‌لاس", "config": c2})
+
+    # 3. کانفیگ فایرفاکس / مالتی ALPN (مخصوص مخابرات و ADSL)
+    r3 = urllib.parse.quote(f"pablo-{name} [Firefox] | {status_tag}")
+    c3 = f"vless://{u_uuid}@{host}:443?path=%2Fws%2F{u_uuid}&security=tls&alpn=h2%2Chttp%2F1.1&encryption=none&insecure=0&host={host}&fp=firefox&type=ws&allowInsecure=0&sni={host}#{r3}"
+    configs.append({"title": "🛡️ کانفیگ Firefox / H2", "tag": "عالی برای وای‌فای، مخابرات و ایرانسل", "config": c3})
+
+    # 4. کانفیگ سافاری و iOS
+    r4 = urllib.parse.quote(f"pablo-{name} [Safari] | {status_tag}")
+    c4 = f"vless://{u_uuid}@{host}:443?path=%2Fws%2F{u_uuid}&security=tls&alpn=http%2F1.1&encryption=none&insecure=0&host={host}&fp=safari&type=ws&allowInsecure=0&sni={host}#{r4}"
+    configs.append({"title": "📱 کانفیگ Safari / iOS", "tag": "مناسب دستگاه‌های اپل و رایتل", "config": c4})
+
+    # 5. کانفیگ پورت 80 بدون TLS (برای زمان اختلال شدید اینترنت)
+    r5 = urllib.parse.quote(f"pablo-{name} [HTTP-80] | {status_tag}")
+    c5 = f"vless://{u_uuid}@{host}:80?path=%2Fws%2F{u_uuid}&security=none&encryption=none&host={host}&type=ws#{r5}"
+    configs.append({"title": "🌐 کانفیگ بدون TLS (پورت 80)", "tag": "زمان قطعی شدید TLS", "config": c5})
+
+    return configs
+
+# ============ روت‌ها ============
 
 @app.route('/')
 def home():
@@ -253,28 +294,6 @@ def toggle_user(user_id):
     restart_xray()
     return jsonify({"status": "ok"})
 
-def make_vless_link(user, host):
-    created_dt = datetime.fromisoformat(user['created_at'])
-    elapsed_days = (datetime.now() - created_dt).days
-    days_left = max(0, user['expire_days'] - elapsed_days)
-    
-    used_gb = round(user['used_bytes'] / (1024**3), 2)
-    quota_gb = user['quota_gb']
-    remaining_gb = max(0.0, round(quota_gb - used_gb, 2))
-    
-    # ساخت ریمارک دقیقاً مشابه فرمت حرفه‌ای ارسالی شما
-    remark = f"pablo-{user['name']} | {used_gb} GB/{quota_gb} GB (باقی {remaining_gb} GB) | {days_left}د 0س"
-    encoded_remark = urllib.parse.quote(remark)
-    
-    config = (
-        f"vless://{user['uuid']}@{host}:443"
-        f"?path=%2Fws%2F{user['uuid']}"
-        f"&security=tls&alpn=http%2F1.1&encryption=none&insecure=0"
-        f"&host={host}&fp=chrome&type=ws&allowInsecure=0&sni={host}"
-        f"#{encoded_remark}"
-    )
-    return config
-
 @app.route('/sub/<user_uuid>')
 def subscription(user_uuid):
     conn = sqlite3.connect(DB_PATH)
@@ -288,8 +307,9 @@ def subscription(user_uuid):
         return "User not found or disabled", 404
 
     host = request.host.split(':')[0]
-    config = make_vless_link(user, host)
-    encoded = base64.b64encode(config.encode()).decode()
+    all_configs = make_all_vless_configs(user, host)
+    raw_text = "\n".join([item['config'] for item in all_configs])
+    encoded = base64.b64encode(raw_text.encode()).decode()
     return Response(encoded, mimetype='text/plain')
 
 @app.route('/api/user_config/<int:user_id>')
@@ -306,15 +326,13 @@ def user_config(user_id):
         return jsonify({"error": "not found"}), 404
 
     host = request.host.split(':')[0]
-    config = make_vless_link(user, host)
+    configs = make_all_vless_configs(user, host)
     sub_link = f"{request.host_url}sub/{user['uuid']}"
-    return jsonify({"config": config, "sub": sub_link})
+    return jsonify({"configs": configs, "sub": sub_link})
 
-# ============ شروع برنامه ============
 if __name__ == '__main__':
     init_db()
     start_caddy()
     threading.Thread(target=restart_xray, daemon=True).start()
     threading.Thread(target=update_stats_loop, daemon=True).start()
-    # اجرای فلسک به صورت کلاینت داخلی روی پورت ۸۸۸۸
     app.run(host='127.0.0.1', port=8888)
